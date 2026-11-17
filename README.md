@@ -34,6 +34,21 @@ patches/          # 16m-профиль платы; WAN_GUARD+LED+SFTP-из-WAN (
 .github/workflows/build.yml   # сборка через GitHub Actions
 ```
 
+## Требования к системе сборки
+
+Linux с инструментами сборки. `build.sh` проверяет их наличие до старта.
+Установка (Debian/Ubuntu, root):
+
+```bash
+apt update && apt install -y autoconf automake gettext libtool libtool-bin \
+    pkg-config bison flex gawk gperf cmake texinfo help2man cpio bc rsync unzip xxd \
+    zlib1g-dev libncurses5-dev gcc-multilib libc6-dev-i386
+```
+
+Пакет `gcc-multilib`/`libc6-dev-i386` обязателен: LuaJIT (зависимость Zapret2)
+собирает host-утилиты как 32-битные (`gcc -m32`). Также нужны `git`, `wget`,
+`tar`, `make`, `gcc`, `patch`, `tmux` (для фонового запуска).
+
 ## Сборка
 
 Локально (Linux, нужны git, wget, tar, make, gcc, patch):
