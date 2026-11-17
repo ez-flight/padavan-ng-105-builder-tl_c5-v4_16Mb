@@ -60,7 +60,7 @@ index 000000000..d23ab50f5
 +TPLINK_HWID=0x04DA857C
 +TPLINK_HWREV=0x0C000600
 +TPLINK_HWREVADD=0x04000000
-+TPLINK_FLASHLAYOUT=16Mc5mtk
++TPLINK_FLASHLAYOUT=16Mmtk
 +TPLINK_HVERSION=3
 diff --git a/trunk/configs/boards/TPLINK/TL_C5-V4_16M/kernel-3.4.x.config b/trunk/configs/boards/TPLINK/TL_C5-V4_16M/kernel-3.4.x.config
 new file mode 100755
