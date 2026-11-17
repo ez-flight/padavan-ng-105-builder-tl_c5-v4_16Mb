@@ -1,0 +1,281 @@
+diff --git a/trunk/user/rc/detect_internet.c b/trunk/user/rc/detect_internet.c
+index e389ce7f2..3c3f13ec1 100644
+--- a/trunk/user/rc/detect_internet.c
++++ b/trunk/user/rc/detect_internet.c
+@@ -26,6 +26,7 @@
+ #include <sys/time.h>
+ 
+ #include "rc.h"
++#include "my_control_led.h"
+ 
+ #define DI_MAX_HOSTS	6
+ #define DI_STATUS_INIT	2
+@@ -277,6 +278,9 @@ di_on_timer(void)
+ #if defined (BOARD_GPIO_LED_WAN)
+ 		if (nvram_get_int("front_led_wan") == 3)
+ 			LED_CONTROL(BOARD_GPIO_LED_WAN, (link_internet) ? LED_ON : LED_OFF);
++			if (link_internet) my_control_wan_led_set_GREN();
++			else if (nvram_get_int("link_wan")) my_control_wan_led_set_ORANGE();
++			else my_control_wan_led_set_OFF();
+ #endif
+ 		if (di_poll_mode != 0 && !di_pause_received) {
+ 			long fail_delay = (long)nvram_safe_get_int("di_lost_delay", 10, 0, 600);
+diff --git a/trunk/user/rc/detect_link.c b/trunk/user/rc/detect_link.c
+index dd60a54f3..0816d0f81 100644
+--- a/trunk/user/rc/detect_link.c
++++ b/trunk/user/rc/detect_link.c
+@@ -34,6 +34,7 @@
+ #include "rc.h"
+ #include "switch.h"
+ #include "gpio_pins.h"
++#include "my_control_led.h"
+ 
+ #define DL_POLL_INTERVAL	2 /* every 2 seconds  */
+ #define DL_PID_FILE		"/var/run/detect_link.pid"
+@@ -95,10 +96,12 @@ dl_handle_link_wan(void)
+ 		front_led_x = nvram_get_int("front_led_wan");
+ 		if (front_led_x == 1)
+ 			LED_CONTROL(BOARD_GPIO_LED_WAN, (dl_status_wan) ? LED_ON : LED_OFF);
++			if (dl_status_wan) my_control_wan_led_set_ORANGE(); else my_control_wan_led_set_OFF();
+ 		else if (front_led_x == 2) {
+ 			if (!get_wan_wisp_active(NULL) && !get_usb_modem_wan(0)) {
+ 				int dl_state = (dl_status_wan && has_wan_gw4() && has_wan_ip4(1)) ? 1 : 0;
+ 				LED_CONTROL(BOARD_GPIO_LED_WAN, (dl_state) ? LED_ON : LED_OFF);
++				if (dl_state) my_control_wan_led_set_GREN(); else if (dl_status_wan) my_control_wan_led_set_ORANGE(); else my_control_wan_led_set_OFF();
+ 			}
+ #if defined (BOARD_GPIO_LED_WAN_PHY)
+ 			LED_CONTROL(BOARD_GPIO_LED_WAN_PHY, (dl_status_wan) ? LED_OFF : LED_ON);
+@@ -187,6 +190,7 @@ dl_handle_link_wisp(void)
+ 		if (front_led_wan == 2) {
+ 			int dl_state = (dl_status_wisp && has_wan_gw4() && has_wan_ip4(1)) ? 1 : 0;
+ 			LED_CONTROL(BOARD_GPIO_LED_WAN, (dl_state) ? LED_ON : LED_OFF);
++			if (dl_state) my_control_wan_led_set_GREN(); else if (dl_status_wan) my_control_wan_led_set_ORANGE(); else my_control_wan_led_set_OFF();
+ 		}
+ #endif
+ 	}
+@@ -301,6 +305,7 @@ dl_update_leds(void)
+ 		LED_CONTROL(BOARD_GPIO_LED_WAN_PHY, (dl_status_wan) ? LED_OFF : LED_ON);
+ #endif
+ 	LED_CONTROL(BOARD_GPIO_LED_WAN, (dl_state) ? LED_ON : LED_OFF);
++	if (dl_state) my_control_wan_led_set_GREN(); else if (dl_status_wan) my_control_wan_led_set_ORANGE(); else my_control_wan_led_set_OFF();
+ #endif
+ #if defined (BOARD_GPIO_LED_LAN)
+ 	front_led_x = nvram_get_int("front_led_lan");
+diff --git a/trunk/user/rc/firewall_ex.c b/trunk/user/rc/firewall_ex.c
+index efd5c0f11..95e2c40a3 100644
+--- a/trunk/user/rc/firewall_ex.c
++++ b/trunk/user/rc/firewall_ex.c
+@@ -760,6 +760,35 @@ get_sshd_bfp_time(int bfp_mode)
+ 	return i_bfp_time;
+ }
+ 
++static int
++include_wan_guard(FILE *fp, const char *wan_if, int is_ipv6)
++{
++	int awg_port;
++	const char *chain = is_ipv6 ? "WAN_GUARD6" : "WAN_GUARD";
++
++	if (!wan_if || !*wan_if)
++		return 0;
++
++/* Factory default is UDP 51821; NVRAM may override or disable it with 0. */
++	awg_port = nvram_safe_get_int("wan_guard_awg_port", 51821, 0, 65535);
++	fprintf(fp, ":%s - [0:0]\n", chain);
++	fprintf(fp, "-A INPUT -i %s -j %s\n", wan_if, chain);
++	fprintf(fp, "-A %s -m %s --state ESTABLISHED,RELATED -j ACCEPT\n", chain, CT_STATE);
++	if (is_ipv6)
++		fprintf(fp, "-A %s -p udp --sport 547 --dport 546 -j ACCEPT\n", chain);
++	else
++		fprintf(fp, "-A %s -p udp --sport 67 --dport 68 -j ACCEPT\n", chain);
++	if (awg_port > 0)
++		fprintf(fp, "-A %s -p udp --dport %d -j ACCEPT\n", chain, awg_port);
++	/* SSH/SFTP from WAN: the checkbox in the SSH menu opens the port
++	 * automatically (same NVRAM sshd_wopen as the firewall page). */
++	if (nvram_invmatch("sshd_enable", "0") && nvram_match("sshd_wopen", "1"))
++		fprintf(fp, "-A %s -p tcp --dport 22 -j %s\n", chain, IPT_CHAIN_NAME_BFP_LIMIT);
++	fprintf(fp, "-A %s -j DROP\n", chain);
++
++	return 1;
++}
++
+ static int
+ ipt_filter_rules(char *man_if, char *wan_if, char *lan_if, char *lan_ip,
+                  char *logaccept, char *logdrop, int tcp_mss_need)
+@@ -826,6 +855,7 @@ ipt_filter_rules(char *man_if, char *wan_if, char *lan_if, char *lan_ip,
+ 	fprintf(fp, ":%s %s [0:0]\n", "INPUT", (is_fw_enabled) ? "DROP" : "ACCEPT");
+ 	fprintf(fp, ":%s %s [0:0]\n", "FORWARD", (is_fw_enabled) ? "DROP" :  "ACCEPT");
+ 	fprintf(fp, ":%s %s [0:0]\n", "OUTPUT", "ACCEPT");
++	include_wan_guard(fp, wan_if, 0);
+ 	fprintf(fp, ":%s - [0:0]\n", MINIUPNPD_CHAIN_IP4_FORWARD);
+ 	fprintf(fp, ":%s - [0:0]\n", IPT_CHAIN_NAME_VPN_LIST);
+ 	fprintf(fp, ":%s - [0:0]\n", IPT_CHAIN_NAME_BFP_LIMIT);
+@@ -1413,6 +1443,7 @@ ip6t_filter_rules(char *man_if, char *wan_if, char *lan_if,
+ 	fprintf(fp, ":%s %s [0:0]\n", "INPUT", (is_fw_enabled) ? "DROP" : "ACCEPT");
+ 	fprintf(fp, ":%s %s [0:0]\n", "FORWARD", (is_fw_enabled) ? "DROP" :  "ACCEPT");
+ 	fprintf(fp, ":%s %s [0:0]\n", "OUTPUT", "ACCEPT");
++	include_wan_guard(fp, wan_if, 1);
+ 	fprintf(fp, ":%s - [0:0]\n", MINIUPNPD_CHAIN_IP6_FORWARD);
+ 	fprintf(fp, ":%s - [0:0]\n", IPT_CHAIN_NAME_BFP_LIMIT);
+ 	if (i_mac_filter > 0)
+diff --git a/trunk/user/rc/my_control_led.h b/trunk/user/rc/my_control_led.h
+new file mode 100644
+index 000000000..3ce94da5e
+--- /dev/null
++++ b/trunk/user/rc/my_control_led.h
+@@ -0,0 +1,25 @@
++#ifndef MY_CONTROL_LED_H
++#define MY_CONTROL_LED_H
++
++#include "gpio_pins.h"
++
++#define PIN_GREN 9
++#define PIN_ORANGE 10
++
++static inline void my_control_wan_led_set_GREN(void)
++{
++    cpu_gpio_set_pin(PIN_GREN, 1);
++    cpu_gpio_set_pin(PIN_ORANGE, 0);
++}
++static inline void my_control_wan_led_set_ORANGE(void)
++{
++    cpu_gpio_set_pin(PIN_GREN, 0);
++    cpu_gpio_set_pin(PIN_ORANGE, 1);
++}
++static inline void my_control_wan_led_set_OFF(void)
++{
++    cpu_gpio_set_pin(PIN_GREN, 0);
++    cpu_gpio_set_pin(PIN_ORANGE, 0);
++}
++
++#endif
+diff --git a/trunk/user/rc/net_wan.c b/trunk/user/rc/net_wan.c
+index a857c0c67..9fb65970c 100644
+--- a/trunk/user/rc/net_wan.c
++++ b/trunk/user/rc/net_wan.c
+@@ -31,6 +31,7 @@
+ #include <signal.h>
+ 
+ #include "rc.h"
++#include "my_control_led.h"
+ #include "switch.h"
+ 
+ char*
+@@ -94,9 +95,13 @@ control_wan_led_isp_state(int is_wan_up, int is_modem_unit)
+ 				has_link = get_wan_ether_link_cached();
+ 		}
+ 		LED_CONTROL(BOARD_GPIO_LED_WAN, (is_wan_up && has_link) ? LED_ON : LED_OFF);
++		if (is_wan_up && nvram_get_int("link_wan")) my_control_wan_led_set_GREN();
++		else if (is_wan_up) my_control_wan_led_set_ORANGE();
++		else my_control_wan_led_set_OFF();
+ 	} else if (front_led_wan == 3) {
+ 		if (!is_wan_up)
+ 			LED_CONTROL(BOARD_GPIO_LED_WAN, LED_OFF);
++			my_control_wan_led_set_OFF();
+ 	}
+ #endif
+ }
+diff --git a/trunk/user/rc/rc.c b/trunk/user/rc/rc.c
+index 3fb6016e8..dd92a6250 100644
+--- a/trunk/user/rc/rc.c
++++ b/trunk/user/rc/rc.c
+@@ -41,6 +41,7 @@
+ 
+ #include "rc.h"
+ #include "gpio_pins.h"
++#include "my_control_led.h"
+ #include "switch.h"
+ 
+ extern struct nvram_pair router_defaults[];
+@@ -243,10 +244,13 @@ init_gpio_leds_buttons(void)
+ 	cpu_gpio_mode_set_bit(50, 1); // change GPIO Mode for P0_LED_KN
+ #endif
+ 	cpu_gpio_set_pin_direction(BOARD_GPIO_LED_WAN, 1);
++	cpu_gpio_set_pin_direction(PIN_GREN, 1);
++	cpu_gpio_set_pin_direction(PIN_ORANGE, 1);
+ #if defined (BOARD_GPIO_LED_WAN_INVERTED)
+ 	cpu_gpio_set_pin(BOARD_GPIO_LED_WAN, LED_ON);
+ #else
+ 	cpu_gpio_set_pin(BOARD_GPIO_LED_WAN, LED_OFF);
++	my_control_wan_led_set_OFF();
+ #endif
+ 	/* hide WAN PHY soft-led */
+ #if defined (BOARD_GPIO_LED_WAN_PHY)
+diff --git a/trunk/user/www/n56u_ribbon_fixed/Advanced_Services_Content.asp b/trunk/user/www/n56u_ribbon_fixed/Advanced_Services_Content.asp
+index d0cddb52a..da58d5a4c 100644
+--- a/trunk/user/www/n56u_ribbon_fixed/Advanced_Services_Content.asp
++++ b/trunk/user/www/n56u_ribbon_fixed/Advanced_Services_Content.asp
+@@ -26,6 +26,7 @@ var $j = jQuery.noConflict();
+ $j(document).ready(function() {
+ 	init_itoggle('telnetd');
+ 	init_itoggle('sshd_enable_gp');
++	init_itoggle('sshd_wopen', sshd_wopen_changed);
+ 	init_itoggle('wins_enable', change_wins_enabled);
+ 	init_itoggle('lltd_enable');
+ 	init_itoggle('adsc_enable');
+@@ -47,6 +48,8 @@ function initial(){
+ 
+ 	if(!found_app_sshd()){
+ 		showhide_div('row_sshd', 0);
++		showhide_div('row_sshd_wopen', 0);
++		showhide_div('row_sshd_wport', 0);
+ 		textarea_sshd_enabled(0);
+ 	}else
+ 		sshd_auth_change();
+@@ -116,6 +119,11 @@ function validForm(){
+ 			return false;
+ 	}
+ 
++	if(document.form.sshd_enable.value != "0" && document.form.sshd_wopen[0].checked){
++		if(!validate_range(document.form.sshd_wport, 22, 65535))
++			return false;
++	}
++
+ 	return true;
+ }
+ 
+@@ -214,9 +222,17 @@ function sshd_auth_change(){
+ 	var v = (auth != "0") ? 1 : 0;
+ 	showhide_div('row_ssh_gp', v);
+ 	showhide_div('row_ssh_keys', v);
++	showhide_div('row_sshd_wopen', v);
+ 	if (!login_safe())
+ 		v = 0;
+ 	textarea_sshd_enabled(v);
++	sshd_wopen_changed();
++}
++
++function sshd_wopen_changed(){
++	var auth = document.form.sshd_enable.value;
++	var v = (document.form.sshd_wopen[0].checked && auth != "0") ? 1 : 0;
++	showhide_div('row_sshd_wport', v);
+ }
+ 
+ function change_wins_enabled(){
+@@ -445,6 +461,27 @@ function change_crond_enabled(){
+                                                 </div>
+                                             </td>
+                                         </tr>
++                                        <tr id="row_sshd_wopen" style="display:none;">
++                                            <th><#Adm_System_sshd_wopen#></th>
++                                            <td>
++                                                <div class="main_itoggle">
++                                                    <div id="sshd_wopen_on_of">
++                                                        <input type="checkbox" id="sshd_wopen_fake" <% nvram_match_x("", "sshd_wopen", "1", "value=1 checked"); %><% nvram_match_x("", "sshd_wopen", "0", "value=0"); %>>
++                                                    </div>
++                                                </div>
++                                                <div style="position: absolute; margin-left: -10000px;">
++                                                    <input type="radio" name="sshd_wopen" id="sshd_wopen_1" class="input" value="1" onclick="sshd_wopen_changed();" <% nvram_match_x("", "sshd_wopen", "1", "checked"); %>/><#checkbox_Yes#>
++                                                    <input type="radio" name="sshd_wopen" id="sshd_wopen_0" class="input" value="0" onclick="sshd_wopen_changed();" <% nvram_match_x("", "sshd_wopen", "0", "checked"); %>/><#checkbox_No#>
++                                                </div>
++                                            </td>
++                                        </tr>
++                                        <tr id="row_sshd_wport" style="display:none;">
++                                            <th style="border-top: 0 none;"><#Adm_System_sshd_wport#></th>
++                                            <td style="border-top: 0 none;">
++                                                <input type="text" maxlength="5" size="5" name="sshd_wport" class="input" value="<% nvram_get_x("","sshd_wport"); %>" onkeypress="return is_number(this,event);"/>
++                                                &nbsp;<span style="color:#888;">[22..65535]</span>
++                                            </td>
++                                        </tr>
+                                         <tr id="row_ssh_keys" style="display:none">
+                                             <td colspan="2">
+                                                 <a href="javascript:spoiler_toggle('authorized_keys')"><span><#Adm_System_sshd_keys#> (authorized_keys)</span></a>

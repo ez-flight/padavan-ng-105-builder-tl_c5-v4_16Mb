@@ -1,4 +1,6 @@
 PADAVAN_REPO=https://github.com/chihpuh777/padavan-ng-tl_c5-v4_16Mb
 PADAVAN_BRANCH=master
-PADAVAN_COMMIT=HEAD
+# Зафиксировано через: git ls-remote https://github.com/chihpuh777/padavan-ng-tl_c5-v4_16Mb HEAD
+# (2026-11-17). Не менять на HEAD: сборка должна быть воспроизводимой.
+PADAVAN_COMMIT=3b097a0ebc12447842d6021c27327e77cd6e0157
 PADAVAN_TOOLCHAIN_URL=https://github.com/nilabsent/padavan-ng-builder/releases/download/release-2026.06.08_17.14.58/toolchain_uClibc-ng-1.0.58.tar.xz

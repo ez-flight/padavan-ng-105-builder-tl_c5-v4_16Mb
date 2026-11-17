@@ -49,6 +49,18 @@ jobs:
         esac
         wget -qO- "${{ env.PADAVAN_TOOLCHAIN_URL }}" | tar -C padavan-ng $ARCH -xf - || :
 
+    - name: Apply local patches from patches/
+      run: |
+        shopt -s nullglob
+        patches=( patches/*.patch patches/*.diff )
+        if ((${#patches[@]})); then
+          for p in "${patches[@]}"; do
+            git -C padavan-ng apply --check "$GITHUB_WORKSPACE/$p" || { echo "Патч не применяется: $p"; exit 1; }
+          done
+          for p in "${patches[@]}"; do
+            git -C padavan-ng apply "$GITHUB_WORKSPACE/$p" || { echo "Ошибка применения патча: $p"; exit 1; }
+          done
+        fi
     - name: Run custom pre-build script
       run: '[[ -f pre-build.sh ]] && . pre-build.sh || :'
 
