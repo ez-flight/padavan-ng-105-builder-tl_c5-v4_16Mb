@@ -32,11 +32,13 @@ index dd60a54f3..0816d0f81 100644
  
  #define DL_POLL_INTERVAL	2 /* every 2 seconds  */
  #define DL_PID_FILE		"/var/run/detect_link.pid"
-@@ -95,10 +96,12 @@ dl_handle_link_wan(void)
+@@ -95,10 +96,13 @@ dl_handle_link_wan(void)
  		front_led_x = nvram_get_int("front_led_wan");
- 		if (front_led_x == 1)
+-		if (front_led_x == 1)
++		if (front_led_x == 1) {
  			LED_CONTROL(BOARD_GPIO_LED_WAN, (dl_status_wan) ? LED_ON : LED_OFF);
 +			if (dl_status_wan) my_control_wan_led_set_ORANGE(); else my_control_wan_led_set_OFF();
++		}
  		else if (front_led_x == 2) {
  			if (!get_wan_wisp_active(NULL) && !get_usb_modem_wan(0)) {
  				int dl_state = (dl_status_wan && has_wan_gw4() && has_wan_ip4(1)) ? 1 : 0;
@@ -45,7 +47,7 @@ index dd60a54f3..0816d0f81 100644
  			}
  #if defined (BOARD_GPIO_LED_WAN_PHY)
  			LED_CONTROL(BOARD_GPIO_LED_WAN_PHY, (dl_status_wan) ? LED_OFF : LED_ON);
-@@ -187,6 +190,7 @@ dl_handle_link_wisp(void)
+@@ -187,6 +191,7 @@ dl_handle_link_wisp(void)
  		if (front_led_wan == 2) {
  			int dl_state = (dl_status_wisp && has_wan_gw4() && has_wan_ip4(1)) ? 1 : 0;
  			LED_CONTROL(BOARD_GPIO_LED_WAN, (dl_state) ? LED_ON : LED_OFF);
