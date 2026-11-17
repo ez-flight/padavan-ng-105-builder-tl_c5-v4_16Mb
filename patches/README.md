@@ -37,10 +37,16 @@
 `CONFIG_FIRMWARE_INCLUDE_ZAPRET2`, страница «Службы → Zapret», NFQUEUE-модули ядра
 включаются в `build_firmware.sh`). Включается только опцией в `build.config`.
 
+- `patches-gcc15-bool.patch` — совместимость с GCC 15 (host): `typedef unsigned char bool;`
+  в заголовках pppd конфликтует со стандартом C23 (в GCC 15 `bool` — ключевое слово).
+  Typedef обёрнут в проверку `__STDC_VERSION__ < 202311L`. Затронуты
+  `accel-pptpd/pptpd-1.3.3/plugins/pppd.h` и `pppd/pppd/pppd.h`.
+
 ## Порядок применения
 
 `build.sh` применяет патчи в алфавитном порядке:
-`patches-16m-profile.patch` → `patches-wan-led.patch`. Файлы не пересекаются.
+`patches-16m-profile.patch` → `patches-gcc15-bool.patch` → `patches-wan-led.patch`.
+Файлы не пересекаются.
 
 ## Обновление патчей
 

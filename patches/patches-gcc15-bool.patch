@@ -1,0 +1,30 @@
+diff --git a/trunk/user/accel-pptpd/pptpd-1.3.3/plugins/pppd.h b/trunk/user/accel-pptpd/pptpd-1.3.3/plugins/pppd.h
+index 111111111..222222222 100644
+--- a/trunk/user/accel-pptpd/pptpd-1.3.3/plugins/pppd.h
++++ b/trunk/user/accel-pptpd/pptpd-1.3.3/plugins/pppd.h
+@@ -85,7 +85,9 @@
+ /*
+  * Option descriptor structure.
+  */
+
++#if !defined(__STDC_VERSION__) || (__STDC_VERSION__ < 202311L)
+ typedef unsigned char	bool;
++#endif
+
+ enum opt_type {
+ 	o_special_noarg = 0,
+diff --git a/trunk/user/pppd/pppd/pppd.h b/trunk/user/pppd/pppd/pppd.h
+index 333333333..444444444 100644
+--- a/trunk/user/pppd/pppd/pppd.h
++++ b/trunk/user/pppd/pppd/pppd.h
+@@ -86,7 +86,9 @@
+ /*
+  * Option descriptor structure.
+  */
+
++#if !defined(__STDC_VERSION__) || (__STDC_VERSION__ < 202311L)
+ typedef unsigned char	bool;
++#endif
+
+ enum opt_type {
+ 	o_special_noarg = 0,
