@@ -92,9 +92,10 @@ log "Исходники на коммите $(git -C padavan-ng rev-parse --shor
 shopt -s nullglob
 PATCH_FILES=( patches/*.patch patches/*.diff )
 shopt -u nullglob
-# Возврат tracked-файлов к HEAD и удаление заголовка, добавляемого патчем,
-# чтобы повторный запуск build.sh не ломался о уже применённые патчи.
+# Возврат tracked-файлов к HEAD и удаление файлов/каталогов, создаваемых
+# патчами, чтобы повторный запуск build.sh не ломался о уже применённые патчи.
 git -C padavan-ng checkout -q HEAD -- . || die "Не удалось сбросить дерево исходников к HEAD"
+rm -rf padavan-ng/trunk/configs/boards/TPLINK/TL_C5-V4_16M
 rm -f padavan-ng/trunk/user/rc/my_control_led.h
 if (( ${#PATCH_FILES[@]} > 0 )); then
     log "Проверка патчей (git apply --check), штук: ${#PATCH_FILES[@]}"
