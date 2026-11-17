@@ -35,7 +35,7 @@ log "Проверка необходимых команд"
 MISSING_CMDS=()
 for cmd in git wget tar make gcc patch awk sed grep \
            autoconf automake autopoint libtool pkg-config \
-           bison flex gawk gperf cmake texinfo help2man cpio bc rsync unzip xxd; do
+           bison flex gawk gperf cmake makeinfo help2man cpio bc rsync unzip xxd; do
     command -v "$cmd" >/dev/null 2>&1 || MISSING_CMDS+=("$cmd")
 done
 if (( ${#MISSING_CMDS[@]} > 0 )); then
