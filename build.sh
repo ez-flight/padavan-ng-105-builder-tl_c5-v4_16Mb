@@ -20,6 +20,11 @@ set -euo pipefail
 BUILDER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$BUILDER_DIR"
 
+# gcc/make пишут временные файлы в TMPDIR: /tmp на сервере — tmpfs с квотой,
+# поэтому временные файлы сборки держим на диске рядом с проектом.
+mkdir -p "$BUILDER_DIR/tmp"
+export TMPDIR="$BUILDER_DIR/tmp"
+
 log()  { printf '\n[build] %s\n' "$*"; }
 die()  { printf '\n[build][ОШИБКА] %s\n' "$*" >&2; exit 1; }
 
