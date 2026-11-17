@@ -48,6 +48,15 @@ if (( ${#MISSING_CMDS[@]} > 0 )); then
 EOF
     exit 1
 fi
+# LuaJIT собирает host-утилиты как 32-битные (gcc -m32) — нужен multilib
+if ! echo 'int main(void){return 0;}' | gcc -m32 -x c - -o /dev/null >/dev/null 2>&1; then
+    cat >&2 <<'EOF'
+[build][ОШИБКА] gcc -m32 не работает (нужен для host-утилит LuaJIT, зависимость Zapret2).
+Установите (root):
+  apt update && apt install -y gcc-multilib libc6-dev-i386
+EOF
+    exit 1
+fi
 command -v tmux >/dev/null 2>&1 || log "Предупреждение: tmux не найден — для длительной сборки лучше запускать ./build.sh внутри tmux (см. BUILD-INSTRUCTION-RU.md)"
 
 # ------------------------------------------------------------
