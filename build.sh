@@ -87,6 +87,11 @@ log "Исходники переключены на коммит $(git -C padava
 # ------------------------------------------------------------
 shopt -s nullglob
 PATCH_FILES=( patches/*.patch patches/*.diff )
+shopt -u nullglob
+# Возврат tracked-файлов к HEAD и удаление заголовка, добавляемого патчем,
+# чтобы повторный запуск build.sh не ломался о уже применённые патчи.
+git -C padavan-ng checkout -q HEAD -- . || die "Не удалось сбросить дерево исходников к HEAD"
+rm -f padavan-ng/trunk/user/rc/my_control_led.h
 if (( ${#PATCH_FILES[@]} > 0 )); then
     log "Проверка патчей (git apply --check), штук: ${#PATCH_FILES[@]}"
     for p in "${PATCH_FILES[@]}"; do
@@ -107,16 +112,17 @@ fi
 # ------------------------------------------------------------
 # 6. Toolchain (скачивание готового архива, если sysroot отсутствует)
 # ------------------------------------------------------------
-if ! ls padavan-ng/toolchain/out/mipsel-linux-uclibc/sysroot/lib/libuClibc-*.so >/dev/null 2>&1; then
+if ! compgen -G "padavan-ng/toolchain/out/mipsel-linux-uclibc/sysroot/lib/libuClibc-*.so" >/dev/null; then
     log "Скачивание toolchain: $PADAVAN_TOOLCHAIN_URL"
     ARCH_FLAG=""
     case "$PADAVAN_TOOLCHAIN_URL" in
         *.tzst|*.tar.zst) ARCH_FLAG="--zstd" ;;
         *.txz|*.tar.xz)   ARCH_FLAG="--xz" ;;
     esac
-    # Отключено: set -e + wget|tar ниже завершится ошибкой при обрыве сети
     wget -qO- "$PADAVAN_TOOLCHAIN_URL" | tar -C padavan-ng $ARCH_FLAG -xf - \
         || die "Не удалось скачать/распаковать toolchain"
+    compgen -G "padavan-ng/toolchain/out/mipsel-linux-uclibc/sysroot/lib/libuClibc-*.so" >/dev/null \
+        || die "После распаковки toolchain/sysroot не найден — архив повреждён?"
 else
     log "Toolchain уже присутствует, скачивание пропущено"
 fi
