@@ -22,8 +22,9 @@ Upstream: `https://github.com/chihpuh777/padavan-ng-builder-tl_c5-v4_16Mb` (пр
    адаптирован и пересоздан под коммит `3b097a0e` (проверен `git apply --check` и
    round-trip применение на чистом клоне):
    - WAN_GUARD: цепочки `WAN_GUARD`/`WAN_GUARD6` в `firewall_ex.c`; разрешены
-     ESTABLISHED,RELATED + DHCP/DHCPv6 + UDP-порт AWG (по умолчанию 51821,
-     NVRAM `wan_guard_awg_port`, `0` отключает).
+     ESTABLISHED,RELATED + DHCP/DHCPv6. Порт AWG3-сервера (`vpns_wg_port`,
+     по умолчанию 51820) открывается из WAN только пока сервер включён
+     (`vpns_enable=1`, тип WireGuard).
    - SFTP/SSH из WAN: при включённом чекбоксе «Доступ к SSH-серверу из WAN»
      (`sshd_wopen=1`, штатный NVRAM) WAN_GUARD автоматически пропускает TCP 22
      (SSH + подсистема SFTP) через цепочку антибрутфорса `BFP_LIMIT`. Чекбокс и поле

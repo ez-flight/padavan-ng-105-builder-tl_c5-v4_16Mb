@@ -13,10 +13,12 @@
 
 - `patches-wan-led.patch` — **WAN_GUARD + LED + SFTP-из-WAN**:
   - WAN_GUARD: цепочки `WAN_GUARD`/`WAN_GUARD6` в `trunk/user/rc/firewall_ex.c`
-    закрывают WAN от входящих соединений со стороны интернета. Разрешаются только
-    `ESTABLISHED,RELATED`, DHCP/DHCPv6 и UDP-порт AmneziaWG (по умолчанию 51821;
-    NVRAM `wan_guard_awg_port`, значение `0` отключает исключение).
-  - SFTP/SSH из WAN: исключение в WAN_GUARD — если в меню SSH включён
+    закрывают WAN от входящих соединений со стороны интернета. Разрешены только
+    `ESTABLISHED,RELATED` и DHCP/DHCPv6.
+  - AWG3/WireGuard сервер: его UDP-порт (`vpns_wg_port`, по умолчанию 51820,
+    задаётся на странице VPN-сервера) открывается из WAN **только пока сервер
+    включён** (`vpns_enable=1` и тип WireGuard). Сервер выключен — порт закрыт.
+  - SFTP/SSH из WAN: если в меню SSH включён
     «Доступ к SSH-серверу из WAN» (`sshd_enable != 0` и `sshd_wopen = 1`),
     порт SSH (TCP 22, в него же входит подсистема SFTP) автоматически открывается
     из WAN через цепочку защиты от брутфорса `BFP_LIMIT`. Чекбокс добавлен в

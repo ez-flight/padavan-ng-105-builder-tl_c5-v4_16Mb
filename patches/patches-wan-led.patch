@@ -65,21 +65,23 @@ diff --git a/trunk/user/rc/firewall_ex.c b/trunk/user/rc/firewall_ex.c
 index efd5c0f11..95e2c40a3 100644
 --- a/trunk/user/rc/firewall_ex.c
 +++ b/trunk/user/rc/firewall_ex.c
-@@ -760,6 +760,35 @@ get_sshd_bfp_time(int bfp_mode)
+@@ -760,6 +760,37 @@ get_sshd_bfp_time(int bfp_mode)
  	return i_bfp_time;
  }
  
 +static int
 +include_wan_guard(FILE *fp, const char *wan_if, int is_ipv6)
 +{
-+	int awg_port;
++	int awg_port = 0;
 +	const char *chain = is_ipv6 ? "WAN_GUARD6" : "WAN_GUARD";
 +
 +	if (!wan_if || !*wan_if)
 +		return 0;
 +
-+/* Factory default is UDP 51821; NVRAM may override or disable it with 0. */
-+	awg_port = nvram_safe_get_int("wan_guard_awg_port", 51821, 0, 65535);
++/* AWG3/WireGuard server: open its UDP port to WAN only while the VPN server
++ * is enabled (type WireGuard). Port follows the VPN Server page (vpns_wg_port). */
++	if (nvram_match("vpns_enable", "1") && nvram_get_int("vpns_type") == 3)
++		awg_port = nvram_safe_get_int("vpns_wg_port", 51820, 1, 65535);
 +	fprintf(fp, ":%s - [0:0]\n", chain);
 +	fprintf(fp, "-A INPUT -i %s -j %s\n", wan_if, chain);
 +	fprintf(fp, "-A %s -m %s --state ESTABLISHED,RELATED -j ACCEPT\n", chain, CT_STATE);

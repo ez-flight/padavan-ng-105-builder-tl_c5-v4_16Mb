@@ -7,8 +7,7 @@ Builder-проект для сборки прошивки **Padavan (padavan-ng)
 
 - **WAN_GUARD** — WAN закрыт от всех входящих соединений со стороны интернета
   (цепочки `WAN_GUARD`/`WAN_GUARD6` в firewall). Разрешены только
-  `ESTABLISHED,RELATED`, DHCP/DHCPv6 и UDP-порт AmneziaWG (по умолчанию 51821,
-  NVRAM `wan_guard_awg_port`, `0` отключает исключение).
+  `ESTABLISHED,RELATED` и DHCP/DHCPv6.
 - **SFTP/SSH из WAN** — чекбокс «Доступ к SSH-серверу из WAN» в разделе SSH
   страницы «Службы» (`sshd_wopen`). При включении порт SSH (TCP 22, туда же
   входит подсистема SFTP) автоматически открывается из WAN через цепочку
@@ -17,7 +16,9 @@ Builder-проект для сборки прошивки **Padavan (padavan-ng)
   есть, оранжевый — линк есть, интернета нет, погас — линка нет.
 - **Zapret2 (nfqws2)** — штатная интеграция из репозитория исходников
   (`CONFIG_FIRMWARE_INCLUDE_ZAPRET2=y`), страница «Службы → Zapret».
-- **AmneziaWG** — `CONFIG_FIRMWARE_INCLUDE_AMNEZIAWG=y`.
+- **AmneziaWG** — `CONFIG_FIRMWARE_INCLUDE_AMNEZIAWG=y`; UDP-порт AWG3-сервера
+  (`vpns_wg_port`, по умолчанию 51820) из WAN открывается только пока сервер
+  включён.
 - **Воспроизводимость** — коммит исходников зафиксирован в `variables`
   (`PADAVAN_COMMIT`, не `HEAD`); `build.sh` сверяет SHA после clone/fetch.
 - **`build.sh`** — локальная сборка с проверками: `set -euo pipefail`, проверка
