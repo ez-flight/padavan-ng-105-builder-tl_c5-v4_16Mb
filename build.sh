@@ -32,9 +32,22 @@ die()  { printf '\n[build][ОШИБКА] %s\n' "$*" >&2; exit 1; }
 # 1. Проверка необходимых команд
 # ------------------------------------------------------------
 log "Проверка необходимых команд"
-for cmd in git wget tar make gcc patch awk sed grep; do
-    command -v "$cmd" >/dev/null 2>&1 || die "Не найдена обязательная команда: $cmd"
+MISSING_CMDS=()
+for cmd in git wget tar make gcc patch awk sed grep \
+           autoconf automake autopoint libtool pkg-config \
+           bison flex gawk gperf cmake texinfo help2man cpio bc rsync unzip xxd; do
+    command -v "$cmd" >/dev/null 2>&1 || MISSING_CMDS+=("$cmd")
 done
+if (( ${#MISSING_CMDS[@]} > 0 )); then
+    printf '[build][ОШИБКА] Отсутствуют команды: %s\n' "${MISSING_CMDS[*]}" >&2
+    cat >&2 <<'EOF'
+Установите зависимости сборки (root):
+  apt update && apt install -y autoconf automake gettext libtool libtool-bin \
+      pkg-config bison flex gawk gperf cmake texinfo help2man cpio bc rsync unzip xxd \
+      zlib1g-dev libncurses5-dev
+EOF
+    exit 1
+fi
 command -v tmux >/dev/null 2>&1 || log "Предупреждение: tmux не найден — для длительной сборки лучше запускать ./build.sh внутри tmux (см. BUILD-INSTRUCTION-RU.md)"
 
 # ------------------------------------------------------------
