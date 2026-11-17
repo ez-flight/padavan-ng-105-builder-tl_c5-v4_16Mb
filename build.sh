@@ -62,11 +62,7 @@ log "build.config проверен: профиль TL_C5-V4_16M, ZAPRET2=y, AMNE
 # ------------------------------------------------------------
 # 4. Получение исходников padavan-ng (закреплённый коммит)
 # ------------------------------------------------------------
-if [[ -d padavan-ng/.git ]]; then
-    log "Обновление существующего клона padavan-ng"
-    git -C padavan-ng fetch --depth 1 origin "$PADAVAN_COMMIT" \
-        || die "Не удалось получить коммит $PADAVAN_COMMIT из $PADAVAN_REPO"
-else
+if [[ ! -d padavan-ng/.git ]]; then
     log "Клонирование $PADAVAN_REPO (коммит $PADAVAN_COMMIT)"
     rm -rf padavan-ng
     mkdir padavan-ng
@@ -74,13 +70,21 @@ else
     git -C padavan-ng remote add origin "$PADAVAN_REPO"
     git -C padavan-ng fetch --depth 1 origin "$PADAVAN_BRANCH" \
         || die "Не удалось клонировать ветку $PADAVAN_BRANCH из $PADAVAN_REPO"
+    git -C padavan-ng checkout -q FETCH_HEAD \
+        || die "Не удалось переключиться на коммит $PADAVAN_COMMIT"
+elif [[ "$(git -C padavan-ng rev-parse HEAD 2>/dev/null)" == "$PADAVAN_COMMIT" ]]; then
+    log "Клон padavan-ng уже на коммите $PADAVAN_COMMIT, повторное скачивание не требуется"
+else
+    log "Обновление клона padavan-ng до коммита $PADAVAN_COMMIT"
+    git -C padavan-ng fetch --depth 1 origin "$PADAVAN_COMMIT" \
+        || die "Не удалось получить коммит $PADAVAN_COMMIT из $PADAVAN_REPO"
+    git -C padavan-ng checkout -q FETCH_HEAD \
+        || die "Не удалось переключиться на коммит $PADAVAN_COMMIT"
 fi
 
-git -C padavan-ng checkout -q FETCH_HEAD \
-    || die "Не удалось переключиться на коммит $PADAVAN_COMMIT"
 [[ "$(git -C padavan-ng rev-parse HEAD)" == "$PADAVAN_COMMIT" ]] \
     || die "HEAD клона ($(git -C padavan-ng rev-parse HEAD)) не совпадает с PADAVAN_COMMIT=$PADAVAN_COMMIT"
-log "Исходники переключены на коммит $(git -C padavan-ng rev-parse --short HEAD)"
+log "Исходники на коммите $(git -C padavan-ng rev-parse --short HEAD)"
 
 # ------------------------------------------------------------
 # 5. Проверка и применение патчей
